@@ -1,78 +1,97 @@
 #include "shell.h"
 
 /**
- * is_interactive - returns true if the shell is in interactive mode
- * @info: pointer to the info_t struct
- *
- * Return: 1 if in interactive mode, 0 otherwise
+ * _myexit - exits the shell
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: exits with a given exit status
+ *         (0) if info->argv[0] != "exit"
  */
-int is_interactive(info_t *info)
+int _myexit(info_t *info)
 {
-	return (isatty(STDIN_FILENO) && info->read_fd <= 2);
+    int exit_check;
+
+    if (info->argv[1])  /* If there is an exit argument */
+    {
+        exit_check = _erratoi(info->argv[1]);
+        if (exit_check == -1)
+        {
+            info->status = 2;
+            print_error(info, "Illegal number: ");
+            _eputs(info->argv[1]);
+            _eputchar('\n');
+            return 1;
+        }
+        info->err_num = _erratoi(info->argv[1]);
+        return -2;
+    }
+    info->err_num = -1;
+    return -2;
 }
 
 /**
- * is_delimiter - checks if a character is a delimiter
- * @c: the character to check
- * @delimiters: the delimiter string
- *
- * Return: 1 if true, 0 if false
+ * _mycd - changes the current directory of the process
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-int is_delimiter(char c, char *delimiters)
+int _mycd(info_t *info)
 {
-	while (*delimiters)
-	{
-		if (*delimiters++ == c)
-			return (1);
-	}
-	return (0);
+    char *current_dir, *target_dir, buffer[1024];
+    int chdir_ret;
+
+    current_dir = getcwd(buffer, 1024);
+    if (!current_dir)
+        _puts("TODO: >>getcwd failure emsg here<<\n");
+    if (!info->argv[1])
+    {
+        target_dir = _getenv(info, "HOME=");
+        if (!target_dir)
+            chdir_ret = /* TODO: what should this be? */
+                chdir((target_dir = _getenv(info, "PWD=")) ? target_dir : "/");
+        else
+            chdir_ret = chdir(target_dir);
+    }
+    else if (_strcmp(info->argv[1], "-") == 0)
+    {
+        if (!_getenv(info, "OLDPWD="))
+        {
+            _puts(current_dir);
+            _putchar('\n');
+            return 1;
+        }
+        _puts(_getenv(info, "OLDPWD=")), _putchar('\n');
+        chdir_ret = /* TODO: what should this be? */
+            chdir((target_dir = _getenv(info, "OLDPWD=")) ? target_dir : "/");
+    }
+    else
+        chdir_ret = chdir(info->argv[1]);
+    if (chdir_ret == -1)
+    {
+        print_error(info, "can't cd to ");
+        _eputs(info->argv[1]), _eputchar('\n');
+    }
+    else
+    {
+        _setenv(info, "OLDPWD", _getenv(info, "PWD="));
+        _setenv(info, "PWD", getcwd(buffer, 1024));
+    }
+    return 0;
 }
 
 /**
- * is_alpha - checks for an alphabetic character
- * @c: The character to check
- *
- * Return: 1 if c is alphabetic, 0 otherwise
+ * _myhelp - displays help information
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-int is_alpha(int c)
+int _myhelp(info_t *info)
 {
-	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
-		return (1);
-	else
-		return (0);
+    char **arg_array;
+
+    arg_array = info->argv;
+    _puts("Help call works. Function not yet implemented \n");
+    if (0)
+        _puts(*arg_array); /* temp att_unused workaround */
+    return 0;
 }
-
-/**
- * string_to_integer - converts a string to an integer
- * @s: the string to be converted
- *
- * Return: 0 if no numbers in string, converted number otherwise
- */
-int string_to_integer(char *s)
-{
-	int i, sign = 1, flag = 0, output;
-	unsigned int result = 0;
-
-	for (i = 0; s[i] != '\0' && flag != 2; i++)
-	{
-		if (s[i] == '-')
-			sign *= -1;
-
-		if (s[i] >= '0' && s[i] <= '9')
-		{
-			flag = 1;
-			result *= 10;
-			result += (s[i] - '0');
-		}
-		else if (flag == 1)
-			flag = 2;
-	}
-
-	if (sign == -1)
-		output = -result;
-	else
-		output = result;
-
-	return (output);
-}
-
